@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using SupportTicketAPI.Data;
 using SupportTicketAPI.Models;
 using SupportTicketAPI.Enums;
+using SupportTicketAPI.Services;
 
 namespace SupportTicketAPI.Controllers
 {
@@ -14,10 +15,12 @@ namespace SupportTicketAPI.Controllers
     public class TicketsController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly SupabaseService _supabaseService;
 
-        public TicketsController(AppDbContext context)
+        public TicketsController(AppDbContext context,SupabaseService supabaseService)
         {
             _context = context;
+            _supabaseService = supabaseService;
         }
 
         [HttpPost]
@@ -55,6 +58,31 @@ namespace SupportTicketAPI.Controllers
             {
                 return Ok(tickets.Where(t => t.CreatedBy == userId).ToList());
             }
+        }
+
+
+
+        [HttpPost("upload")]
+        public async Task<IActionResult> Upload(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("File not provided");
+
+            var fileName = Guid.NewGuid() + Path.GetExtension(file.FileName);
+
+            using var stream = file.OpenReadStream();
+
+            var url = await _supabaseService.UploadStreamAsync(
+                stream,
+                fileName,
+                file.ContentType
+            );
+
+            return Ok(new
+            {
+                message = "File uploaded",
+                url = url
+            });
         }
 
 
